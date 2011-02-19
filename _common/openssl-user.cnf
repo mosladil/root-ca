@@ -1,0 +1,52 @@
+[ req ]
+default_bits		= 1024
+default_keyfile		= user.key
+distinguished_name	= req_distinguished_name
+string_mask			= nombstr
+req_extensions		= v3_req
+
+[ req_distinguished_name ]
+O	= supplied
+OU	= supplied
+C	= supplied
+ST	= supplied
+L	= supplied
+
+[ v3_req ]
+nsCertType			= client,email
+basicConstraints	= critical,CA:false
+
+[ ca ]
+default_ca              = default_CA
+
+[ default_CA ]
+dir                     = %CADB_DIR%
+certs                   = $dir
+new_certs_dir           = $dir/ca.db.certs
+database                = $dir/ca.db.index
+serial                  = $dir/ca.db.serial
+RANDFILE                = $dir/random-bits
+certificate             = $dir/ca.pem
+private_key             = $dir/ca.key
+default_days            = 730
+default_crl_days        = 30
+default_md              = md5
+preserve                = yes
+x509_extensions			= user_cert
+policy                  = policy_anything
+email_in_dn		= yes
+
+[ policy_anything ]
+commonName		= supplied
+emailAddress	= supplied
+O               = supplied
+OU              = supplied
+C               = supplied
+ST              = supplied
+L               = supplied
+
+[ user_cert ]
+subjectAltName			= email:copy
+basicConstraints		= critical,CA:false
+authorityKeyIdentifier	= keyid:always
+extendedKeyUsage		= clientAuth,emailProtection

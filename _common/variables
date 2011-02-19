@@ -1,0 +1,33 @@
+DEBUG=1
+VERBOSE=0
+
+# certificate dirs
+CADB_DIR="ca"
+CADB_CRTS="$CADB_DIR/ca.db.certs"
+SERVERDB_DIR="servers"
+USERSDB_DIR="users"
+
+# apache htpasswd
+APACHE_HTPASSWD="/etc/apache2/2.2/htpasswd"
+
+# certificate defauls
+C="CZ"
+ST="Plzensky kraj"
+L="Plzen"
+U="OpenIndiana Czech Secure Server"
+O="OpenIndiana Czech"
+
+SSL_CA_CONFIG="_common/openssl-ca.cnf"
+SSL_SERVER_CONFIG="_common/openssl-server.cnf"
+SSL_USER_CONFIG="_common/openssl-user.cnf"
+
+DEFAULT_CA_AGE=7300 # 20 years
+DEFAULT_SERVER_AGE=1825 # 5 years
+DEFAULT_USER_AGE= # 2 years
+
+DEFAULT_CA_SIZE=2048
+DEFAULT_SERVER_SIZE=2048
+DEFAULT_USER_SIZE=2048
+
+GO_LEFT="\033[80D"
+GO_MIDDLE="$GO_LEFT\033[15C"

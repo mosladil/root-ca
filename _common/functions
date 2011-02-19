@@ -1,0 +1,143 @@
+checkIfRootCaExists()
+{
+    if [ -e "$CADB_DIR/ca.pem" ]
+	then return ${TRUE}
+	else return ${FALSE}
+    fi
+}
+
+checkIfServerCertExists()
+{
+    RET=`awk -F/ {'print $2'} $CADB_DIR/ca.db.index | grep $1 | awk -F= {'print $2'}`
+    if [ "$RET" == "$1" ]
+	then return ${TRUE}
+	else return ${FALSE}
+    fi
+}
+
+checkIfUserCertExists()
+{
+    RET=`awk -F/ {'print $3'} $CADB_DIR/ca.db.index | grep $1 | awk -F= {'print $2'}`
+    if [ "$RET" == "$1" ]
+	then return ${TRUE}
+	else return ${FALSE}
+    fi
+}
+
+setCnfFromTemplate()
+{
+    [ -e $1 ] || return
+    sed -e "s/%CADB_DIR%/$CADB_DIR/" $1 > openssl.cnf
+}
+
+generateMasterKey()
+{
+    local KEYSIZE=1024
+    [ $1 ] && KEYSIZE=$2
+    [ -f $1 ] || openssl genrsa -des3 -out ca.key $KEYSIZE -rand random-bits
+}
+
+generatePrivateKey()
+{
+    local KEYSIZE=1024
+    [ $2 ] && KEYSIZE=$1
+    [ -f $1.key ] || openssl genrsa -out $1.key $2
+}
+
+generateMasterCert()
+{
+    openssl req -new -x509 -days $DEFAULT_CA_AGE -config openssl.cnf -key ca.key -out ca.pem
+}
+
+generateCertRequest()
+{
+    openssl req -new -config openssl.cnf -subj "$SUBJECT_DN" -key $1.key -out $1.csr
+}
+
+generateCertsDbStore()
+{
+    [ -x $CADB_DIR/ca.db.certs ]  || mkdir -p $CADB_DIR/ca.db.certs
+    [ -f $CADB_DIR/ca.db.serial ] || echo '01' > $CADB_DIR/ca.db.serial
+    [ -f $CADB_DIR/ca.db.index ]  || cp /dev/null $CADB_DIR/ca.db.index
+}
+
+generatePkcs12()
+{
+    if [ -e $USERSDB_DIR/$EMAIL/$EMAIL.pem ]
+	then local USER_DIR="$USERSDB_DIR/$EMAIL"
+	else local USER_DIR="./"
+    fi
+    CANAME="`openssl x509 -noout  -in $CADB_DIR/ca.pem -subject | sed -e 's;.*CN=;;' -e 's;/Em.*;;'`"
+    USERNAME="`openssl x509 -noout  -in $USER_DIR/$EMAIL.pem -subject | sed -e 's;.*CN=;;' -e 's;/Em.*;;'`"
+    openssl pkcs12 -export -in $USER_DIR/$EMAIL.pem -inkey $USER_DIR/$EMAIL.key -certfile $CADB_DIR/ca.pem -name "$USERNAME" -caname "$CANAME" -out $USER_DIR/$EMAIL.p12 -passout "pass:$EXPORTPASSWORD"
+}
+
+generateSslFakeAuth()
+{
+    echo "$SUBJECT_DN:xxj31ZMTZzkVA"
+}
+
+signCertRequest()
+{
+    openssl ca -batch -passin "pass:$CAPASSWORD" -config openssl.cnf -out $1.pem -infiles $1.csr
+}
+
+verifyCertificate()
+{
+    openssl verify -CAfile $CADB_DIR/ca.pem $1.pem
+}
+
+showValuesFromArgs()
+{
+    for i in $1
+    do
+	eval "echo -e $i\"$GO_MIDDLE\" \$$i;"
+    done
+    echo -n "Do you want to continue? [Y/n] "; read KEY
+    [ "n" == "$KEY" ] && exit 1
+}
+
+cleanup()
+{
+    LIST="openssl.cnf $CADB_DIR/ca.db.serial.old $CADB_DIR/ca.db.index.old"
+    for i in $LIST
+    do
+	[ -e $i ] && rm -f $i
+    done
+}
+
+errorNoCa()
+{
+    echo "Error: No existing CA found! Please, create a new root CA first."
+    exit 1
+}
+
+errorExistingCa()
+{
+    echo "Error: An existing root CA found! Please, delete the dir \"$CADB_DIR\" first."
+    exit 1
+}
+
+exitServerExists()
+{
+    echo "Error: An existing server certificate already exists! Please, revoke it first or create another."
+    exit 1
+}
+
+exitUserExists()
+{
+    echo "Error: An existing user certificate already exists! Please, revoke it first or create another."
+    exit 1
+}
+
+exitKeyNotFound()
+{
+    echo "Error: Private key not found."
+    exit 1
+}
+
+exitCertNotFound()
+{
+    echo "Error: Certificate file not found."
+    exit 1
+}
